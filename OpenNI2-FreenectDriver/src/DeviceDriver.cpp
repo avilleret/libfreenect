@@ -31,6 +31,7 @@ namespace FreenectDriver
   private:
     ColorStream* color;
     DepthStream* depth;
+    freenect_context* m_ctx;
 
     // for Freenect::FreenectDevice
     void DepthCallback(void* data, uint32_t timestamp) {
@@ -43,7 +44,8 @@ namespace FreenectDriver
   public:
     Device(freenect_context* fn_ctx, int index) : Freenect::FreenectDevice(fn_ctx, index),
       color(NULL),
-      depth(NULL) { }
+      depth(NULL),
+      m_ctx(fn_ctx){ }
     ~Device()
     {
       destroyStream(color);
@@ -119,6 +121,23 @@ namespace FreenectDriver
         case ONI_DEVICE_PROPERTY_DRIVER_VERSION:          // OniVersion
         case ONI_DEVICE_PROPERTY_HARDWARE_VERSION:        // int
         case ONI_DEVICE_PROPERTY_SERIAL_NUMBER:           // string
+			{
+				int devNum = freenect_num_devices(m_ctx);
+				if ( devNum == 0 ) {
+					LogError("Can't find any connected device");
+					return ONI_STATUS_ERROR;
+				}
+				freenect_device_attributes** attribute_list = new freenect_device_attributes*[devNum];
+
+				if ( freenect_list_device_attributes(m_ctx, attribute_list) < 0 ){
+					LogError("Can't get device attributes list");
+					delete[] attribute_list;
+					return ONI_STATUS_ERROR;
+				}				
+				snprintf((char *) data, (size_t) pDataSize, (const char*) (attribute_list[0]->camera_serial));
+				delete[] attribute_list;
+				return ONI_STATUS_OK;
+			}
         case ONI_DEVICE_PROPERTY_ERROR_STATE:             // ?
         // files
         case ONI_DEVICE_PROPERTY_PLAYBACK_SPEED:          // float
